@@ -12,29 +12,29 @@ module priority_resolver(
     localparam AUTOMATIC_ROTATING_MODE = 2'b10;
     localparam SPECIFIC_ROTATING_MODE = 2'b11;
 
+    // register to store the highest priority interrupt in case of rotating priority mode
+    reg[2:0] priority_counter = 3'b000;
 
     // set the interrupt line to 1 if there is an interrupt request that is not masked
     always @(IRR or IMR) begin
-        if(IRR[0] == 1 && IMR[0] != 1)  INT = 1;
-        else if(IRR[1] == 1 && IMR[1] != 1)  INT = 1;
-        else if(IRR[2] == 1 && IMR[2] != 1)  INT = 1;
-        else if(IRR[3] == 1 && IMR[3] != 1)  INT = 1;
-        else if(IRR[4] == 1 && IMR[4] != 1)  INT = 1;
-        else if(IRR[5] == 1 && IMR[5] != 1)  INT = 1;
-        else if(IRR[6] == 1 && IMR[6] != 1)  INT = 1;
-        else if(IRR[7] == 1 && IMR[7] != 1)  INT = 1;
+        if (IRR & ~IMR != 0)  INT = 1;
         else INT = 0;
     end
 
-
     // set the In-Service Register and reset Interrupt Request Register when the interrupt is acknowledged 
-    // choose the highest priority based on the priority mode
     always @(negedge INTA) begin
+        // choose the highest priority based on the priority mode
         if(OCW2[7:6] == AUTOMATIC_ROTATING_MODE) begin 
-            /* to-do*/
+            ISR[priority_counter] = 1;
+            IRR[priority_counter] = 0;
+            priority_counter = (priority_counter + 1) % 8;
         end
         else if(OCW2[7:6] == SPECIFIC_ROTATING_MODE) begin
-            /* to-do*/
+            // set the counter to the specified highest priority interrupt (= bottom priority + 1)
+            priority_counter = (OCW2[2:0] + 1) % 8;
+            ISR[priority_counter] = 1;
+            IRR[priority_counter] = 0;
+            priority_counter = (priority_counter + 1) % 8;
         end
         else begin // fixed priority mode
             if(IRR[0] == 1 && IMR[0] != 1) begin
