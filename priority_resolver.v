@@ -1,10 +1,11 @@
 module priority_resolver(
     input wire [7:0] IR, // Interrupt Request lines connected to I/O
-    input wire [7:0] IM, // Interrupt Mask lines connected to controller
-    input wire [7:0] OCW2, // Operation Command Word 2 connected to controller
+    input wire [7:0] IM, // Interrupt Mask lines connected to controller and updated at OCW1
+    input wire [7:0] operation, // operation lines connected to controller and updated at OCW2
     input wire INTA, // Interrupt Acknowledge Signal connected to CPU
     output wire INT, // Interrupt Signal connected to CPU
-    output reg [7:0] ISR // In-Service Register connected to controller
+    output reg [7:0] ISR, // In-Service Register connected to controller
+    output reg [2:0] INT_VEC // Interrupt Vector connected to controller
 );
   
     //Interrupt Request register
@@ -13,15 +14,23 @@ module priority_resolver(
     // Interrupt Mask register
     reg [7:0] IMR;
     
-    // Priority modes based on rotate bit (R) and select-level bit (SL) in OCW2
-    localparam AUTOMATIC_ROTATING_MODE = 2'b10;
-    localparam SPECIFIC_ROTATING_MODE = 2'b11;
+    // Operations based on Rotation bit (R), Selection bit (SL) and End of Interrupt bit (EOI) 
+    localparam AUTOMATIC_ROTATING = 2'b10;
+    localparam SPECIFIC_ROTATING = 2'b11;
+    localparam NON_SPECIFIC_EOI = 3'b001;
+    localparam SPECIFIC_EOI = 3'b011;
 
-    // register to store the highest priority interrupt in case of rotating priority mode
-    reg[2:0] priority_counter = 3'b000;
+    // variable to store the highest priority interrupt in case of rotating priority mode
+    integer priority_counter = 0;
 
-    // register to store the number of interrupt Acknowledge pulses
-    reg[2:0] ack_counter = 2'b00;
+    // variable to store the number of interrupt Acknowledge pulses
+    integer pulses_counter = 0;
+
+    // variable to store the index of last acknowledged interrupt
+    integer last_acknowledged_interrupt = 0;
+    
+    // loop variable
+    integer i;
 
     // set the interrupt line to 1 if there is an interrupt request that is not masked
     assign INT = (IRR & ~IMR) ? 1 : 0;
@@ -34,70 +43,57 @@ module priority_resolver(
     // when the controller changes Interrupt Mask lines lines update internal IMR
     always @(IM) begin
         IMR <= IM;
-    end 
+    end
+    
+    // reset the In-Service Register when the End of Interrupt bit is set
+    always @(operation) begin
+        if(operation[7:5] == NON_SPECIFIC_EOI) begin
+            // reset the In-Service Register
+            ISR[last_acknowledged_interrupt] <= 0;
+        end
+        else if(operation[7:5] == SPECIFIC_EOI) begin
+            // reset the In-Service Register for the specified interrupt
+            ISR[operation[2:0]] <= 0;
+        end 
+    end
     
     // set the In-Service Register and reset Interrupt Request Register when the interrupt is acknowledged  
     always @(negedge INTA) begin
-        ack_counter = ack_counter + 1;
+        pulses_counter = pulses_counter + 1;
 
-        if (ack_counter == 1) begin
-
+        if (pulses_counter == 1) begin
             // choose the highest priority based on the priority mode
-            if(OCW2[7:6] == AUTOMATIC_ROTATING_MODE) begin 
+            if (operation[7:6] == AUTOMATIC_ROTATING) begin 
                 ISR[priority_counter] = 1;
                 IRR[priority_counter] = 0;
+                last_acknowledged_interrupt = priority_counter;
                 priority_counter = (priority_counter + 1) % 8;
             end
-            else if(OCW2[7:6] == SPECIFIC_ROTATING_MODE) begin
+            else if (operation[7:6] == SPECIFIC_ROTATING) begin
                 // set the counter to the specified highest priority interrupt (= bottom priority + 1)
-                priority_counter = (OCW2[2:0] + 1) % 8;
+                priority_counter = (operation[2:0] + 1) % 8;
                 ISR[priority_counter] = 1;
                 IRR[priority_counter] = 0;
+                last_acknowledged_interrupt = priority_counter;
                 priority_counter = (priority_counter + 1) % 8;
             end
             else begin // fixed priority mode
-                if(IRR[0] == 1 && IMR[0] != 1) begin
-                    ISR[0] = 1;
-                    IRR[0] = 0;
-                end
-                else if(IRR[1] == 1 && IMR[1] != 1)  begin
-                    ISR[1] = 1;
-                    IRR[1] = 0;
-                end
-                else if(IRR[2] == 1 && IMR[2] != 1)  begin
-                    ISR[2] = 1;
-                    IRR[2] = 0;
-                end
-                else if(IRR[3] == 1 && IMR[3] != 1)  begin
-                    ISR[3] = 1;
-                    IRR[3] = 0;
-                end
-                else if(IRR[4] == 1 && IMR[4] != 1)  begin
-                    ISR[4] = 1;
-                    IRR[4] = 0;
-                end
-                else if(IRR[5] == 1 && IMR[5] != 1)  begin
-                    ISR[5] = 1;
-                    IRR[5] = 0;
-                end
-                else if(IRR[6] == 1 && IMR[6] != 1)  begin
-                    ISR[6] = 1;
-                    IRR[6] = 0;
-                end
-                else if(IRR[7] == 1 && IMR[7] != 1)  begin
-                    ISR[7] = 1;
-                    IRR[7] = 0;
+                for (i = 0; i < 8; i = i + 1) begin
+                    if (IRR[i] == 1 && IMR[i] != 1) begin
+                        ISR[i] = 1;
+                        IRR[i] = 0;
+                        last_acknowledged_interrupt = i;
+                        break;
+                    end
                 end
             end
         end 
         
-        else if (ack_counter == 2) begin
-        // releases an 8-bit pointer onto the Data Bus
-        ack_counter = 0;
+        else if (pulses_counter == 2) begin
+            // set the Interrupt Vector
+            INT_VEC <= last_acknowledged_interrupt;
+            pulses_counter = 0;
         end    
     end
 
 endmodule
-
-\\ to do : add the 8-bit pointer onto the Data Bus
-\\ to do : reset the In-Service Register
