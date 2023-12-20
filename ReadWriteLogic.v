@@ -102,5 +102,13 @@ module ReadWrite (
   end
 
   assign Data= D;
+  assign ICW[0]=ICW1;
+  assign ICW[1]=ICW2;
+  assign ICW[2]=ICW3;
+  assign ICW[3]=ICW4;
+  assign OCW[0]=OCW1;
+  assign OCW[1]=OCW2;
+  assign OCW[2]=OCW3;
+
 
 endmodule
