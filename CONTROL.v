@@ -1,114 +1,183 @@
-
-
-module ControlLogic (
-  input wire CLK,
-  input wire RESET,
-  input wire RD,            // Read control signal
-  input wire WR,            // Write control signal
-  input wire ICW1_RECEIVED,
-  input wire ICW2_RECEIVED,
-  input wire OCW1_RECEIVED,  
-  input wire OCW2_RECEIVED,
-  input wire OCW3_RECEIVED,
-  input wire [7:0] DATA_IN,  // Data bus from other blocks
-  output wire [7:0] IV,      // Interrupt Vector
-  output wire [1:0] CAS,     // Cascade Signals
-  output wire EOI,           // End of Interrupt
-  output reg [7:0] IMR // Interrupt Mask Register
+module ReadWrite (
+  input RE,
+  input WR,
+  input A0,
+  input [7:0] D,
+  input CS,
+  input [1:0]Read_command,//=10 IRR  11 ISR  A0=1 IMR &READ
+  input [7:0]ISR,
+  input [7:0]IMR,
+  input [7:0]IRR,
+  output [7:0]Data,
+  output [3:0]ICW,
+  output [2:0]OCW
 );
 
-  ///////////////
-  localparam CMD_READY = 2'b00;
-  localparam WRITE_ICW2 = 2'b01;
-  localparam WRITE_ICW3 = 2'b10;
-  localparam WRITE_ICW4 = 2'b11;
+  reg ICW1, ICW2, ICW3, ICW4,OCW1,OCW2,OCW3;
 
-  // Registers for command words
-  reg [7:0] icw1, icw2, icw3, icw4; // Initialization Command Words
-  reg [7:0] ocw1, ocw2, ocw3;       // Operation Command Words
+  reg READ, WRITE;
+  reg [1:0] state = 2'b00;
+  reg cascade;
+  reg entertoicw4;
+  reg [7:0]Data1;
 
-  // Internal signals
-  reg [1:0] command_state;
-
-
-  // Commented Assignments for better understanding
-  // ICW1
-  wire LTIM = icw1[3]; // 1: level triggered mode, 0: edge triggered mode
-  wire ICW4 = icw1[0]; // 1: ICW4 is needed 
-  wire SNGL = icw1[1]; // 1: no ICW3 is needed ;this is the only 8259A in the system.
-
-  // ICW2
-  wire [4:0] T7_T3 = icw2[7:3]; // 5 most significant bits of the vector address register found in ICW2
-
-  // ICW4
-  wire SFNM = icw4[4]; // 1: special fully nested mode is programmed
-  wire AEOI = icw4[1]; // 1: automatic end of interrupt mode is programmed
-  wire BUF = icw4[3];  // 1: buffered mode is programmed
-  wire M_S = icw4[2];  // If buffered mode is selected: 1 for master, 0 for slave; else no function
-
-  // OCW3
-  wire [1:0]Read_command = ocw3[1:0];       // 01: READ IR register, 11: READ IS register on the next read cycle
-  wire [1:0]Special_Mask_Mode = ocw3[6:5]; // 01: reset special mask, 11: set special mask
-  wire POLL = ocw3[2];                     // 1: poll, 0: no poll
-
-
-
- 
-
-  // State machine
-  always @(ICW1_RECEIVED, ICW2_RECEIVED, command_state, DATA_IN) begin
-    case (command_state)
-      CMD_READY:
-        if (ICW1_RECEIVED)begin
-             command_state <= WRITE_ICW2;
-        end
-         
-      WRITE_ICW2:
-        if (ICW2_RECEIVED) begin
-          icw2 <= DATA_IN;
-          if (SNGL == 1'b0)
-            command_state <= WRITE_ICW3;
-          else if (ICW4 == 1'b1)
-            command_state <= WRITE_ICW4;
-          else
-            command_state <= CMD_READY;
-        end
-
-      WRITE_ICW3:
-         begin
-          icw3 <= DATA_IN;
-          if (ICW4 == 1'b1)
-            command_state <= WRITE_ICW4;
-          else
-            command_state <= CMD_READY;
-        end
-
-      WRITE_ICW4:
-         begin
-          icw4 <= DATA_IN;
-          command_state <= CMD_READY;
-        end
-      default:
-        command_state <= CMD_READY;
-    endcase
-  end
-
-  // Handling OCW_RECEIVED signals
-  always @(OCW1_RECEIVED, OCW2_RECEIVED,OCW3_RECEIVED,DATA_IN) begin
-    begin
-      if(OCW1_RECEIVED) begin
-        ocw1 <= DATA_IN;
-        IMR <= DATA_IN;
+  // Clock generation
+  always @(negedge WR) begin
+    READ = ~CS & ~RE;
+    WRITE = ~CS & ~WR;
+    
+    ICW1 = 0;
+    ICW2 = 0;
+    ICW3 = 0;
+    ICW4 = 0;
+    OCW1 = 0;
+    OCW2 = 0;
+    OCW3 = 0;
+    if (WRITE) begin
+    
+    case(state)  
+      2'b00:
+      begin
+        ICW1 = ~A0 & D[4];
+        if(ICW1)
+          begin
+            state=2'b01;
+          end
+        cascade = ICW1 & ~D[1];
+        entertoicw4 = ICW1 & D[0]; // Transition to state 01
+        
+        OCW1=A0;
+        OCW2=~A0&~D[3]&~D[4];
+        OCW3=~A0&~D[7]&~D[4]&D[3];
+        
+       if(READ)
+        begin
+          if(Read_command==2'b10)
+            begin
+              Data1=IRR;
+            end
+             if(Read_command==2'b10)
+            begin
+              Data1=ISR;
+            end
+             if(A0)
+            begin
+              Data1=IMR;
+            end
+        end 
+       
       end
-      else if (OCW2_RECEIVED) begin
-        ocw2 <= DATA_IN;
+      
+      2'b01:
+       begin
+        ICW2 = A0;
+        if (cascade)
+        begin 
+          state=2'b10;
       end
-      else if (OCW3_RECEIVED) begin
-        ocw3 <= DATA_IN;
+      else if (entertoicw4)
+      begin 
+        state=2'b11;
       end
+      else
+        begin
+          state=00;
+          end
+        end
+      2'b10:
+       begin
+          ICW3 = A0;
+          cascade = 1'b0;
+          state=2'b11;
+        end
+        
+      2'b11:
+       begin
+          ICW4 = A0;
+          entertoicw4 = 1'b0;
+          state=00;
+        end
+      endcase
     end
   end
+
+  assign Data= D;
+  assign ICW[0]=ICW1;
+  assign ICW[1]=ICW2;
+  assign ICW[2]=ICW3;
+  assign ICW[3]=ICW4;
+  assign OCW[0]=OCW1;
+  assign OCW[1]=OCW2;
+  assign OCW[2]=OCW3;
+
+
+endmodule
+
+module DUT;
+  // Inputs
+  reg RE;
+  reg WR;
+  reg CS;
+  reg clk;
+  reg [7:0] d;
+  reg A0;
+  reg state = 2'b00;
+
+  // Outputs
+  wire [6:0] Data;
+
+
+
+  initial begin
+    RE = 1;
+    WR = 1;
+    CS = 0;
+    #1;
+     d = 8'b0111001; A0 = 0;#1; WR = 0;
+         #5;
+          $display("Time=%0t RE=%b WR=%b CS=%b clk=%b d=%h A0=%b Data=%b %b %b %b %b %b %b ",
+                   $time, RE, WR, CS, clk, d, A0,Data[6],Data[5], Data[4], Data[3],Data[2], Data[1], Data[0]);
+                   
+      WR = 1; #1;  d = 8'b0011101; A0 = 1; #1; WR = 0;
+      #5;
+          $display("Time=%0t RE=%b WR=%b CS=%b clk=%b d=%h A0=%b Data=%b %b %b %b %b %b %b ",
+                   $time, RE, WR, CS, clk, d, A0,Data[6],Data[5], Data[4], Data[3],Data[2], Data[1], Data[0]);
+     WR = 1; #1;  d = 8'b0111110; A0 = 1; #1; WR = 0;
+    #5;
+          $display("Time=%0t RE=%b WR=%b CS=%b clk=%b d=%h A0=%b Data=%b %b %b %b %b %b %b ",
+                   $time, RE, WR, CS, clk, d, A0,Data[6],Data[5], Data[4], Data[3],Data[2], Data[1], Data[0]);
+       
+       WR = 1; #1; d = 8'b0101101; A0 = 1; #1;WR = 0;
+     #5;
+          $display("Time=%0t RE=%b WR=%b CS=%b clk=%b d=%h A0=%b Data=%b %b %b %b %b %b %b ",
+                   $time, RE, WR, CS, clk, d, A0,  Data[6],Data[5], Data[4], Data[3],Data[2], Data[1], Data[0]);
+    
+      WR = 1; #1;       d = 8'b0100101; A0 = 0;#1; WR = 0;
+     #5;
+          $display("Time=%0t RE=%b WR=%b CS=%b clk=%b d=%h A0=%b Data=%b %b %b %b %b %b %b ",
+                   $time, RE, WR, CS, clk, d, A0,  Data[6],Data[5], Data[4], Data[3],Data[2], Data[1], Data[0]);
+          WR = 1; #1;   d = 8'b0100101; A0 = 1;#1; WR = 0;
+     #5;
+          $display("Time=%0t RE=%b WR=%b CS=%b clk=%b d=%h A0=%b Data=%b %b %b %b %b %b %b ",
+                   $time, RE, WR, CS, clk, d, A0,  Data[6],Data[5], Data[4], Data[3],Data[2], Data[1], Data[0]);
+            WR = 1; #1; d = 8'b0101101; A0 = 0;#1; WR = 0;
+     #5;
+          $display("Time=%0t RE=%b WR=%b CS=%b clk=%b d=%h A0=%b Data=%b %b %b %b %b %b %b ",
+                   $time, RE, WR, CS, clk, d, A0,  Data[6],Data[5], Data[4], Data[3],Data[2], Data[1], Data[0]);
+    
+  end
+
+  // Instantiate the ReadWrite module
+  ReadWrite uut (
+    .RE(RE),
+    .WR(WR),
+    .A0(A0),
+    .D(d),
+    .CS(CS),
+    .Data(Data)
+  );
 
 
 
 endmodule
+
