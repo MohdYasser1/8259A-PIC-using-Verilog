@@ -20,10 +20,9 @@ module ReadWrite (
   reg cascade;
   reg entertoicw4;
   reg [7:0]Data1;
-
   // Clock generation
-  always @(negedge WR) begin
-    READ = ~CS & ~RE;
+  always @(negedge WR) begin 
+    //READ = ~CS & ~RE; ?? Diffrent Operation
     WRITE = ~CS & ~WR;
     
     ICW1 = 0;
@@ -50,21 +49,21 @@ module ReadWrite (
         OCW2=~A0&~D[3]&~D[4];
         OCW3=~A0&~D[7]&~D[4]&D[3];
         
-       if(READ)
-        begin
-          if(Read_command==2'b10)
-            begin
-              Data1=IRR;
-            end
-             if(Read_command==2'b10)
-            begin
-              Data1=ISR;
-            end
-             if(A0)
-            begin
-              Data1=IMR;
-            end
-        end 
+      //  if(READ)             //Diffrent Operation
+      //   begin
+      //     if(Read_command==2'b10)
+      //       begin
+      //         Data1=IRR;
+      //       end
+      //        if(Read_command==2'b10)
+      //       begin
+      //         Data1=ISR;
+      //       end
+      //        if(A0)
+      //       begin
+      //         Data1=IMR;
+      //       end
+      //   end 
        
       end
       
@@ -101,7 +100,30 @@ module ReadWrite (
     end
   end
 
-  assign Data= D;
+//READ OPERATION
+  always @(negedge RE) 
+  begin
+    READ = ~CS & ~RE;
+    if(READ)
+        begin
+          if(Read_command==2'b10 && ~A0) //anded with A0 to work independently
+            begin
+              Data1=IRR;
+            end
+             if(Read_command==2'b11 && ~A0)
+            begin
+              Data1=ISR;
+            end
+             if(A0)
+            begin
+              Data1=IMR;
+            end
+        end 
+  end  
+  //How do we output Data 1?
+
+  assign Data = Data1;
+  //assign Data= D; //?? 
   assign ICW[0]=ICW1;
   assign ICW[1]=ICW2;
   assign ICW[2]=ICW3;
