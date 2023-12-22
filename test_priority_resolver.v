@@ -5,7 +5,7 @@ module testbench;
     reg [7:0] IM;
     reg [7:0] operation;
     reg INTA;
-    
+    reg AEOI;
     // output
     wire INT;
     wire [2:0] INT_VEC;
@@ -19,6 +19,7 @@ module testbench;
         .IM(IM),
         .operation(operation),
         .INTA(INTA),
+        .AEOI(AEOI), 
         .INT(INT),
         .INT_VEC(INT_VEC),
         .ISR(ISR),
@@ -27,6 +28,7 @@ module testbench;
     );
 
     initial begin
+        AEOI = 0;
         //// test(1): fixed priority mode and non-specific end of interrupt////
         IR = 8'b10000001;
         IM = 8'b00000000;
@@ -224,6 +226,36 @@ module testbench;
         #10
         $display("INT: %b, INT_VEC: %b, ISR: %b, IRR: %b, IMR: %b", INT, INT_VEC, ISR, IRR, IMR);
         operation = 8'b00000000; // reset operation
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // test(4): Automatic End of Interrup
+        IR = 8'b00001000;
+        IM = 8'b00000000;
+        operation = 8'b00000000;
+        $display("//// test(4): Automatic End of Interrup: IR= %b, IM= %b, operation= %b", IR, IM, operation);
+        
+        #10
+        $display("INT: %b, INT_VEC: %b, ISR: %b, IRR: %b, IMR: %b", INT, INT_VEC, ISR, IRR, IMR);
+        
+        #15
+        $display("send first pulse");
+        INTA = 1;
+        #5
+        INTA = 0;
+
+        // Wait for some time and display result
+        #10
+        $display("INT: %b, INT_VEC: %b, ISR: %b, IRR: %b, IMR: %b", INT, INT_VEC, ISR, IRR, IMR);
+        
+        $display("send second pulse");
+        AEOI = 1;
+        $display("automatic end of interrupt: AEOI: %b", AEOI);
+        INTA = 1;
+        #5
+        INTA = 0;
+        
+        // Wait for some time and display result
+        #10
+        $display("INT: %b, INT_VEC: %b, ISR: %b, IRR: %b, IMR: %b", INT, INT_VEC, ISR, IRR, IMR);
         
     end
 endmodule

@@ -3,6 +3,7 @@ module priority_resolver(
     input wire [7:0] IM, // Interrupt Mask lines connected to controller and updated at OCW1
     input wire [7:0] operation, // operation lines connected to controller and updated at OCW2
     input wire INTA, // Interrupt Acknowledge Signal connected to CPU
+    input wire AEOI, // Automatic End of Interrupt line connected to controller and updated at ICW4
     output wire INT, // Interrupt Signal connected to CPU
     output reg [2:0] INT_VEC, // Interrupt Vector connected to controller
     output reg [7:0] ISR, // In-Service Register connected to ReadWrite Logic
@@ -90,7 +91,7 @@ module priority_resolver(
                         ISR[i] = 1;
                         IRR[i] = 0;
                         last_acknowledged_interrupt = i;
-                        break;
+                        i = 8;
                     end
                 end
             end
@@ -99,6 +100,10 @@ module priority_resolver(
         else if (pulses_counter == 2) begin
             // set the Interrupt Vector
             INT_VEC <= last_acknowledged_interrupt;
+            // reset the ISR register if Automatic End of Interrup is enabled
+            if(AEOI == 1) begin
+              ISR[last_acknowledged_interrupt] <= 0;
+            end
             pulses_counter = 0;
         end    
     end
