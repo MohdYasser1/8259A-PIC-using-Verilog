@@ -15,7 +15,7 @@ module ControlLogic (
   output wire [1:0]Read_command,
   output wire AEOI,
   output wire LTIM,
-  output wire opperation_OCW2
+  output wire [7:0]opperation_OCW2
 
 );
 
@@ -82,6 +82,9 @@ assign CAS = CAS_OUT;
  //ocw2
  assign opperation_OCW2 = ocw2;
 
+///INTERUPT VECTOR
+assign IV = DATA_OUT;
+
   always @(next_command_state) begin
   command_state = next_command_state ;
 end
@@ -143,7 +146,7 @@ end
   end
 
 
-assign cascade_salve = SNGL?0:(SP?0:1); // if no cascade then 0 if cascade_mode 0 for master and 1 for slave
+assign cascade_salve = SNGL?0:(SP?0:0); // if no cascade then 0 if cascade_mode 0 for master and 1 for slave
 assign cascade_mode = SNGL?0:1;          //1 if cascade mode is on
 
 reg[1:0] control_state ;
@@ -151,11 +154,12 @@ reg[1:0] next_control_state ;
 
 /////////////////////////////////
 
+
 always @(next_control_state) begin
   control_state = next_control_state ;
 end
 
-always @* begin
+always @(control_state,INTA) begin
  case (control_state)
   CTL_READY : begin
     if (INTA==0) begin
@@ -184,14 +188,14 @@ always @* begin
   end
  endcase
 end
-
+/*
 always @(CAS) begin
 
   if(!SNGL && cascade_slave)begin //if cascade mode and Slave
     CAS_IN <= CAS;
   end
- /* if(!SNGL && !cascade_salve)begin //if cascade mode and master
-  end*/
-end
+ /*if(!SNGL && !cascade_salve)begin //if cascade mode and master
+  end
+end*/
 
 endmodule
