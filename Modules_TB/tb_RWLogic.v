@@ -47,7 +47,6 @@ module tb_RWLogic();
         RE = 1'b0;
         #50
         RE = 1'b1;
-
        end
 
 endmodule
