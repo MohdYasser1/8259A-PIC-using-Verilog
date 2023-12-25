@@ -21,6 +21,7 @@ module PIC_8259 (
     wire [7:0] Priority_operation; //OCW2
     wire [7:0] ISR;                //IS Register to be displayed on request
     wire [7:0] IRR;                //IR Register to be displayed on request
+    wire [7:0] IMR_Read;           //IM Register to be displayed on request
 
 
     ReadWrite ReadWriteLogic(
@@ -31,10 +32,10 @@ module PIC_8259 (
         .CS (CS),
         .Read_command (Read_command),
         .ISR (ISR),
-        .IMR (IMR),
+        .IMR (IMR_Read),
         .IRR (IRR),
         .ICW (ICWs_flags),
-        .OCW (OCW_Flags)
+        .OCW (OCWs_flags)
     );
 
     ControlLogic ControlLogic(
@@ -61,7 +62,7 @@ module PIC_8259 (
         .INT_VEC (INT_vector),
         .ISR (ISR),
         .IRR (IRR),
-        .IMR (IMR)
+        .IMR (IMR_Read)
     );
     
 endmodule

@@ -42,13 +42,31 @@ module tb_PIC ();
         #50
         WR = 1'b0;
         #50
+        //ICW2
         WR = 1'b1;
         Data = 8'b10101xxx; // Assume the Interrupt Vector addresses are 10101xxx;
         A0 = 1'b1;
         #50
         WR = 1'b0;
         #50
+        //ICW4
         WR = 1'b1;
+        Data = 8'b00000001;
+        #50
+        WR = 1'b0;
+        #50
+        WR = 1'b1;
+        //Initialization Complete
 
+        //Raise 1 interrupt
+        //OCW1 
+        Data = 8'b00000000;
+        #50
+        WR = 1'b0;
+        #50
+        WR = 1'b1;
+        
+        IR = 8'b00000001;
+    
     end
 endmodule
