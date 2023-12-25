@@ -56,8 +56,8 @@ assign CAS = CAS_OUT;
   reg [7:0] ocw1, ocw2, ocw3;       // Operation Command Words
 
   // Internal signals
-  reg [1:0] command_state;
-  reg [1:0] next_command_state;
+  reg [1:0] command_state = 2'b00;
+  reg [1:0] next_command_state = 2'b00; 
 
 
   // ICW1
@@ -91,8 +91,8 @@ end
     case (command_state)
       CMD_READY:
         if (ICW1_RECEIVED)begin
-            icw1<=DATA_IN;
-            IMR <= 8'b00000000;
+            icw1=DATA_IN;
+            IMR = 8'b00000000;
              next_command_state <= WRITE_ICW2;
         end
     
@@ -104,25 +104,23 @@ end
           else if (ICW4 == 1'b1)
             next_command_state <= WRITE_ICW4;
           else
-            next_command_state <= CMD_READY;
+            next_command_state = CMD_READY;
         end
 
       WRITE_ICW3:
         if(ICW3_RECEIVED) begin
           icw3 <= DATA_IN;
           if (ICW4 == 1'b1)
-            next_command_state <= WRITE_ICW4;
+            next_command_state = WRITE_ICW4;
           else
-            next_command_state <= CMD_READY;
+            next_command_state = CMD_READY;
         end
 
       WRITE_ICW4:
        if(ICW4_RECEIVED) begin
           icw4 <= DATA_IN;
-          next_command_state <= CMD_READY;
+          next_command_state = CMD_READY;
         end
-      default:
-        next_command_state <= CMD_READY;
     endcase
   end
 
@@ -179,9 +177,7 @@ always @* begin
     end
     next_control_state= CTL_READY;  
   end
-  default: begin
-  control_state= CTL_READY; 
-  end
+
  endcase
 end
 
