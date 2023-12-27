@@ -4,6 +4,7 @@ module cascade_buffer_comparator (
   input [7:0] slave_IDs,
   output [7:0] selected_slave_ID,
   output [7:0] interrupt_requests
+  //omar
   
 );
 
