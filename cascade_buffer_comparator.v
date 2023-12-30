@@ -1,12 +1,19 @@
 module cascade_buffer_comparator (
   
-  input [2:0] CAS,
-  input [7:0] slave_IDs,
+  inout wire [2:0] CAS,
+  input wire [7:0] icw3,
+  input wire [7:0] IV,
+  input wire INTA_2,
+  inout wire SP,
+  input wire SNGL,
   output [7:0] selected_slave_ID,
   output [7:0] interrupt_requests
-  //omar
+
   
 );
+
+
+
 
   // Combinational logic to compare IDs and select slave device
   assign selected_slave_ID = slave_IDs[CAS];

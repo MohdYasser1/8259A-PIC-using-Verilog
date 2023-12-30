@@ -2,16 +2,22 @@ module ReadWrite (
   input RE,
   input WR,
   input A0,
-  input [7:0] D,
+  inout [7:0] D,
   input CS,
   input [1:0]Read_command,//=10 IRR  11 ISR  A0=1 IMR &READ
   input [7:0]ISR,
   input [7:0]IMR,
   input [7:0]IRR,
-  output [7:0]Data,
+ // output [7:0]Data,
   output [3:0]ICW,
-  output [2:0]OCW
+  output [2:0]OCW,
+////////////////////////////data bus buffer
+  input wire Interrupt_Vector, 
+  input wire IV_ready
+
+
 );
+
 
   reg ICW1, ICW2, ICW3, ICW4,OCW1,OCW2,OCW3;
 
@@ -20,6 +26,14 @@ module ReadWrite (
   reg cascade;
   reg entertoicw4;
   reg [7:0]Data1;
+
+  reg [7:0] DATA_IN;
+  always @(WRITE) begin
+    if(WRITE) begin
+     DATA_IN= D;
+    end
+  end
+
   // Clock generation
   always @(negedge WR) begin 
     //READ = ~CS & ~RE; ?? Diffrent Operation
@@ -37,17 +51,17 @@ module ReadWrite (
     case(state)  
       2'b00:
       begin
-        ICW1 = ~A0 & D[4];
+        ICW1 = ~A0 & DATA_IN[4];
         if(ICW1)
           begin
             state=2'b01;
           end
-        cascade = ICW1 & ~D[1];
-        entertoicw4 = ICW1 & D[0]; // Transition to state 01
+        cascade = ICW1 & ~DATA_IN[1];
+        entertoicw4 = ICW1 & DATA_IN[0]; // Transition to state 01
         
         OCW1=A0;
-        OCW2=~A0&~D[3]&~D[4];
-        OCW3=~A0&~D[7]&~D[4]&D[3];
+        OCW2=~A0&~DATA_IN[3]&~DATA_IN[4];
+        OCW3=~A0&~DATA_IN[7]&~DATA_IN[4]&DATA_IN[3];
         
       //  if(READ)             //Diffrent Operation
       //   begin
@@ -122,7 +136,9 @@ module ReadWrite (
   end  
   //How do we output Data 1?
 
-  assign Data = Data1;
+  assign D = IV_ready? Interrupt_Vector: READ? Data1 : 8'bzzzzzzzz;
+
+  //assign Data = Data1;
   //assign Data= D; //?? 
   assign ICW[0]=ICW1;
   assign ICW[1]=ICW2;

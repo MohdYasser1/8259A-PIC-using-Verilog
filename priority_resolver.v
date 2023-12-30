@@ -9,7 +9,10 @@ module priority_resolver(
     output reg [2:0] INT_VEC, // Interrupt Vector connected to controller
     output reg [7:0] ISR, // In-Service Register connected to ReadWrite Logic
     output reg [7:0] IRR, // Interrupt Request Register connected to ReadWrite Logic
-    output reg [7:0] IMR // Interrupt Mask Register connected to ReadWrite Logic
+    output reg [7:0] IMR, // Interrupt Mask Register connected to ReadWrite Logic
+
+    input wire first_ACK ,
+    input wire second_ACK
 );
       
     // Operations based on Rotation bit (R), Selection bit (SL) and End of Interrupt bit (EOI) 
