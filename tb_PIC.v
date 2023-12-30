@@ -37,7 +37,7 @@ module tb_PIC ();
         Data = 8'bxxx10x11;
         SPEN = 1'b1;
         IR = 8'b00000000;
-        INTA = 1'b0;
+        INTA = 1'b1;
         A0 = 1'b0;
         #50
         WR = 1'b0;
@@ -67,6 +67,26 @@ module tb_PIC ();
         WR = 1'b1;
         
         IR = 8'b00000001;
+
+        //Raise 2 interrupts
+        #300
+        IR = 8'b10000010;
     
+    end
+
+    always @(posedge INT) begin
+        #50
+        INTA = 1'b0;
+        #50
+        INTA = 1'b1;
+        #50
+        INTA = 1'b0;
+        Data = 8'b00100001;
+        A0 = 1'b0;
+        #50
+        INTA = 1'b1;
+        WR = 1'b0;
+        #50 
+        WR = 1'b1;
     end
 endmodule

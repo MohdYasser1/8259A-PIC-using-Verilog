@@ -22,6 +22,7 @@ module PIC_8259 (
     wire [7:0] ISR;                //IS Register to be displayed on request
     wire [7:0] IRR;                //IR Register to be displayed on request
     wire [7:0] IMR_Read;           //IM Register to be displayed on request
+    wire LTIM;                     //Level/Edge Trigger Selector
 
 
     ReadWrite ReadWriteLogic(
@@ -44,15 +45,17 @@ module PIC_8259 (
         .INT_VEC (INT_vector), 
         .ICWs_Flags (ICWs_flags),
         .OCWs_Flags (OCWs_flags),
-        .DATA_IN (D), //from the data bus ?
+        .DATA_IN (D), 
         .IV (Control_data_out),
         .CAS (CAS),
         .IMR (IMR),
         .Read_command (Read_command),
+        .LTIM (LTIM),
         .opperation_OCW2 (Priority_operation)
     );
 
     priority_resolver PriorityResolver(
+        .LTIM (LTIM),
         .IR (IR),
         .IM (IMR),
         .operation (Priority_operation),

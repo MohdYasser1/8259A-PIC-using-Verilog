@@ -20,10 +20,17 @@ module ReadWrite (
   reg cascade;
   reg entertoicw4;
   reg [7:0]Data1;
+  always @(*) begin
+    WRITE = ~CS & ~WR;
+    if (~WRITE) begin
+      OCW1 = 0;
+      OCW2 = 0;
+      OCW3 = 0;
+    end
+  end
   // Clock generation
   always @(negedge WR) begin 
     //READ = ~CS & ~RE; ?? Diffrent Operation
-    WRITE = ~CS & ~WR;
     
     ICW1 = 0;
     ICW2 = 0;
