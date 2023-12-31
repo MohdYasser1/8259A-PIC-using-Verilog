@@ -97,7 +97,7 @@ assign CAS = CAS_OUT;
  // assign POLL = ocw3[2];                     // 1: poll, 0: no poll
 
  //ocw2
- assign opperation_OCW2 = ocw2;
+ assign opperation_OCW2 = OCW2_RECEIVED ? ocw2 : 8'b00000000;
 
 ///INTERUPT VECTOR
 assign IV = DATA_OUT;
