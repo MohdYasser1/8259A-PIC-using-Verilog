@@ -186,8 +186,9 @@ end
 always @(cascade_mode,cascade_slave,int_from_slave,first_ACK,second_ACK,INT_VEC) begin
  if(cascade_mode) begin            // if cascade mode is on
    if (!cascade_salve) begin      // if master
-    if(int_from_slave && (first_ACK  || second_ACK)) begin // if slave active and during INTA 2 pulses cas_out = interupt vector
+    if(int_from_slave && (second_ACK)) begin // if slave active and during INTA 2 pulses cas_out = interupt vector
       CAS_OUT <= INT_VEC;
+      send_IV <=0;
     end else if(!int_from_slave) begin  // if master but slave not active there is a device connected to this interrupt line
        DATA_OUT <= {T7_T3, INT_VEC};
        send_IV <=1;
@@ -206,9 +207,9 @@ always @(cascade_mode,cascade_slave,int_from_slave,first_ACK,second_ACK,INT_VEC)
  end  
 end
 
-assign IV_ready = send_IV; 
+assign IV_ready = send_IV && second_ACK;  
 assign CAS = CAS_OUT;
-assign IV = DATA_OUT;
+assign IV[7:0] = DATA_OUT[7:0];
 
 
 
@@ -217,11 +218,19 @@ assign IV = DATA_OUT;
 reg[1:0] control_state ;
 reg[1:0] next_control_state ;
 
-reg negedge_INTA ;
+reg negedge_INTA =0;
+reg [1:0 ]INTA_pulses=2'b00;
 
 
 always@(negedge INTA) begin
-  negedge_INTA <= 1;
+  //negedge_INTA = 1;
+  INTA_pulses = INTA_pulses + 1;
+end
+
+always@(posedge INTA) begin
+  if (INTA_pulses == 2'b10)begin
+    INTA_pulses = 2'b00;
+  end
 end
 
 
@@ -229,10 +238,10 @@ always @(next_control_state) begin
   control_state = next_control_state ;
 end
 
-always @(control_state,negedge_INTA) begin
+always @(control_state,negedge INTA,INTA_pulses) begin
  case (control_state)
   CTL_READY : begin
-    if (negedge_INTA) begin
+    if (INTA_pulses == 2'b01 ) begin
       next_control_state = ACK1;
     end else begin
       next_control_state = CTL_READY ;
@@ -240,7 +249,7 @@ always @(control_state,negedge_INTA) begin
     
   end 
   ACK1:begin
-    if(negedge_INTA) begin
+    if(INTA_pulses == 2'b10) begin
       next_control_state = ACK2;
     end else begin
       next_control_state =ACK1;
@@ -248,7 +257,11 @@ always @(control_state,negedge_INTA) begin
     
   end
   ACK2:begin
-    next_control_state= CTL_READY;  
+    if(INTA_pulses == 2'b00)begin
+        next_control_state= CTL_READY; 
+    end else begin
+      next_control_state =ACK2;
+    end
   end
   default: begin
   control_state= CTL_READY; 
@@ -256,8 +269,8 @@ always @(control_state,negedge_INTA) begin
  endcase
 end
 
-assign first_ACK = (control_state== ACK1);
-assign second_ACK = (control_state== ACK2);
+assign first_ACK = (control_state == ACK1);
+assign second_ACK = (control_state == ACK2);
 
 //////Interrupt //////////
    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -302,5 +315,4 @@ end
 */
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     endmodule
