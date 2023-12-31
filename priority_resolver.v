@@ -1,5 +1,4 @@
 module priority_resolver(
-    input wire LTIM,
     input wire [7:0] IR, // Interrupt Request lines connected to I/O
     input wire [7:0] IM, // Interrupt Mask lines connected to controller and updated at OCW1
     input wire [7:0] operation, // operation lines connected to controller and updated at OCW2
@@ -18,13 +17,6 @@ module priority_resolver(
     localparam NON_SPECIFIC_EOI = 3'b001;
     localparam SPECIFIC_EOI = 3'b011;
 
-    //////////////////////////////////////
-    reg[7:0] IRR_masked;
-    reg [7:0] request_latch;
-    reg INT_REG;
-    //////////////////////////////////////
-
-    
     // variable to store the highest priority interrupt in case of rotating priority mode
     integer priority_counter = 0;
 
@@ -38,8 +30,7 @@ module priority_resolver(
     integer i, n;
 
     // set the interrupt line to 1 if there is an interrupt request that is not masked
-    //assign INT = (IRR & ~IMR) ? 1 : 0;
-    assign INT = INT_REG;
+    assign INT = (IRR & ~IMR) ? 1 : 0;
     
     // when the Interrupt Request lines changes update internal IRR
     always @(IR) begin
@@ -50,41 +41,7 @@ module priority_resolver(
     always @(IM) begin
         IMR <= IM;
     end
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    always @(IRR,IMR) begin
-        IRR_masked <= IRR & ~IMR;
-    end
-
-always @(IRR_masked or LTIM) begin
-    // Level-triggered logic
-    if (LTIM) begin
-        if (IRR_masked != 8'b0) begin
-            // Any high input generates an interrupt
-            INT_REG <= 1;
-        end else begin
-            // No interrupt request
-            INT_REG <= 0;
-        end
-    end else begin
-        // Edge-triggered logic
-        if (IRR_masked != request_latch) begin
-            // Transition occurred, generate interrupt
-            INT_REG <= 1;
-        end else begin
-            // No transition, no interrupt
-            INT_REG <= 0;
-        end
-    end
-
-    // Request latch (transparent D-type latch)
-    request_latch <= IRR_masked;
-end
     
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     // reset the In-Service Register when the End of Interrupt bit is set
     always @(operation) begin
         if(operation[7:5] == NON_SPECIFIC_EOI) begin
