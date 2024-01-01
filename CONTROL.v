@@ -147,7 +147,7 @@ end
   end
 
   // Handling OCW_RECEIVED signals
-  always @(OCW1_RECEIVED, OCW2_RECEIVED,OCW3_RECEIVED,DATA_IN) begin
+  always @(OCW1_RECEIVED, OCW2_RECEIVED,posedge OCW3_RECEIVED) begin
     begin
       if(OCW1_RECEIVED) begin
         ocw1 <= DATA_IN;

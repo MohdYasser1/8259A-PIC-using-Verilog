@@ -30,6 +30,7 @@ module PIC_8259 (
         .WR (WR),
         .A0 (A0),
         .D (D),
+        .Data (D),
         .CS (CS),
         .Read_command (Read_command),
         .ISR (ISR),
@@ -48,14 +49,15 @@ module PIC_8259 (
         .DATA_IN (D), 
         .IV (Control_data_out),
         .CAS (CAS),
-        .IMR (IMR),
+        .IM (IMR),
         .Read_command (Read_command),
+        .AEOI (AEOI),
         .LTIM (LTIM),
         .opperation_OCW2 (Priority_operation)
     );
 
     priority_resolver PriorityResolver(
-        .LTIM (LTIM),
+        // .LTIM (LTIM),
         .IR (IR),
         .IM (IMR),
         .operation (Priority_operation),

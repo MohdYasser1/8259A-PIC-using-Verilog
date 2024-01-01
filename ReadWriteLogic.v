@@ -129,7 +129,7 @@ module ReadWrite (
   end  
   //How do we output Data 1?
 
-  assign Data = Data1;
+  assign Data = (RE) ? 8'bz : Data1;
   //assign Data= D; //?? 
   assign ICW[0]=ICW1;
   assign ICW[1]=ICW2;
