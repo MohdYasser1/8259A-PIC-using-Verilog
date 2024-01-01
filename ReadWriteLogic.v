@@ -2,7 +2,7 @@ module ReadWrite (
   input RE,
   input WR,
   input A0,
-  input [7:0] D,
+    [7:0] D,
   input CS,
   input [1:0]Read_command,//=10 IRR  11 ISR  A0=1 IMR &READ
   input [7:0]ISR,
@@ -10,7 +10,10 @@ module ReadWrite (
   input [7:0]IRR,
   output [7:0]Data,
   output [3:0]ICW,
-  output [2:0]OCW
+  output [2:0]OCW,
+////////////////////////////data bus buffer
+  input wire Interrupt_Vector, 
+  input wire IV_ready
 );
 
   reg ICW1, ICW2, ICW3, ICW4,OCW1,OCW2,OCW3;
@@ -128,8 +131,7 @@ module ReadWrite (
         end 
   end  
   //How do we output Data 1?
-
-  assign Data = (RE) ? 8'bz : Data1;
+  assign Data = IV_ready? Interrupt_Vector: READ? Data1 : 8'bzzzzzzzz;
   //assign Data= D; //?? 
   assign ICW[0]=ICW1;
   assign ICW[1]=ICW2;
@@ -138,6 +140,4 @@ module ReadWrite (
   assign OCW[0]=OCW1;
   assign OCW[1]=OCW2;
   assign OCW[2]=OCW3;
-
-
 endmodule
