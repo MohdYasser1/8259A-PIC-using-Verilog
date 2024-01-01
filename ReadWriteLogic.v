@@ -2,7 +2,7 @@ module ReadWrite (
   input RE,
   input WR,
   input A0,
-    [7:0] D,
+  input  [7:0] D,
   input CS,
   input [1:0]Read_command,//=10 IRR  11 ISR  A0=1 IMR &READ
   input [7:0]ISR,
