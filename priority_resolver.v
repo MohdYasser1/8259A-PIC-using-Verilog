@@ -4,19 +4,24 @@ module priority_resolver(
     input wire [7:0] operation, // operation lines connected to controller and updated at OCW2
     input wire INTA, // Interrupt Acknowledge Signal connected to CPU
     input wire AEOI, // Automatic End of Interrupt line connected to controller and updated at ICW4
+    input wire LTIM, // Level Triggered Interrupt Mode line connected to controller and updated at ICW1
     output wire INT, // Interrupt Signal connected to CPU
     output reg [2:0] INT_VEC, // Interrupt Vector connected to controller
     output reg [7:0] ISR, // In-Service Register connected to ReadWrite Logic
     output reg [7:0] IRR, // Interrupt Request Register connected to ReadWrite Logic
     output reg [7:0] IMR // Interrupt Mask Register connected to ReadWrite Logic
 );
-      
+    
     // Operations based on Rotation bit (R), Selection bit (SL) and End of Interrupt bit (EOI) 
     localparam AUTOMATIC_ROTATING = 2'b10;
     localparam SPECIFIC_ROTATING = 2'b11;
     localparam NON_SPECIFIC_EOI = 3'b001;
     localparam SPECIFIC_EOI = 3'b011;
-
+    
+    // IRR registers updated at level and edge
+    reg [7:0] lvl_IRR = 0;
+    reg [7:0] edg_IRR = 0;
+    
     // variable to store the highest priority interrupt in case of rotating priority mode
     integer priority_counter = 0;
 
@@ -32,14 +37,55 @@ module priority_resolver(
     // set the interrupt line to 1 if there is an interrupt request that is not masked
     assign INT = (IRR & ~IMR) ? 1 : 0;
     
-    // when the Interrupt Request lines changes update internal IRR
-    always @(IR) begin
-        IRR <= IR;
-    end
-    
     // when the controller changes Interrupt Mask lines lines update internal IMR
     always @(IM) begin
         IMR <= IM;
+    end
+
+    // edge trigger
+    always @(posedge IR[0]) begin
+      edg_IRR[0] <= IR[0];
+    end
+    
+    always @(posedge IR[1]) begin
+      edg_IRR[1] <= IR[1];
+    end
+    
+    always @(posedge IR[2]) begin
+      edg_IRR[2] <= IR[2];
+    end
+    
+    always @(posedge IR[3]) begin
+      edg_IRR[3] <= IR[3];
+    end
+    
+    always @(posedge IR[4]) begin
+      edg_IRR[4] <= IR[4];
+    end
+    
+    always @(posedge IR[5]) begin
+      edg_IRR[5] <= IR[5];
+    end
+    
+    always @(posedge IR[6]) begin
+      edg_IRR[6] <= IR[6];
+    end
+    
+    always @(posedge IR[7]) begin
+      edg_IRR[7] <= IR[7];
+    end
+    
+    // level trigger
+    always @ (IR) begin
+      lvl_IRR <= IR;
+    end
+    
+    // update the value of Interrupt Request Register
+    always @(lvl_IRR or edg_IRR) begin
+      if(LTIM == 1) 
+        IRR <= lvl_IRR;
+      else 
+        IRR <= edg_IRR;
     end
     
     // reset the In-Service Register when the End of Interrupt bit is set
@@ -63,26 +109,35 @@ module priority_resolver(
             if (operation[7:6] == AUTOMATIC_ROTATING) begin 
                 ISR[priority_counter] = 1;
                 IRR[priority_counter] = 0;
+                edg_IRR[priority_counter] = 0;
+                lvl_IRR[priority_counter] = 0;
                 last_acknowledged_interrupt = priority_counter;
-                n = 0;
-                while(IRR[priority_counter] != 1 && n < 8) begin
-                  priority_counter = (priority_counter + 1) % 8;
-                  n = n + 1;
+                for(n = 0; n < 8; n = n + 1) begin
+                  if(IRR[priority_counter] == 1)
+                    n = 9;
+                  else
+                    priority_counter = (priority_counter + 1) % 8; 
                 end
             end
             else if (operation[7:6] == SPECIFIC_ROTATING) begin
                 // set the counter to the specified highest priority interrupt (= bottom priority + 1)
                 priority_counter = (operation[2:0] + 1) % 8;
-                while(IRR[priority_counter] != 1) begin
-                  priority_counter = (priority_counter + 1) % 8;
+                for(n = 0; n < 8; n = n + 1) begin
+                  if(IRR[priority_counter] == 1)
+                    n = 9;
+                  else
+                    priority_counter = (priority_counter + 1) % 8; 
                 end
                 ISR[priority_counter] = 1;
                 IRR[priority_counter] = 0;
+                edg_IRR[priority_counter] = 0;
+                lvl_IRR[priority_counter] = 0;
                 last_acknowledged_interrupt = priority_counter;
-                n = 0;
-                while(IRR[priority_counter] != 1 && n < 8) begin
-                  priority_counter = (priority_counter + 1) % 8;
-                  n = n + 1;
+                for(n = 0; n < 8; n = n + 1) begin
+                  if(IRR[priority_counter] == 1)
+                    n = 9;
+                  else
+                    priority_counter = (priority_counter + 1) % 8;
                 end
             end
             else begin // fixed priority mode
@@ -90,6 +145,8 @@ module priority_resolver(
                     if (IRR[i] == 1 && IMR[i] != 1) begin
                         ISR[i] = 1;
                         IRR[i] = 0;
+                        edg_IRR[i] = 0;
+                        lvl_IRR[i] = 0;
                         last_acknowledged_interrupt = i;
                         i = 8;
                     end
