@@ -23,6 +23,7 @@ module PIC_8259 (
     wire [7:0] IRR;                //IR Register to be displayed on request
     wire [7:0] IMR_Read;           //IM Register to be displayed on request
     wire LTIM;                     //Level/Edge Trigger Selector
+    wire IV_ready;                 // A flag to signal that the Interrupt Vector is ready to be diplayed
 
 
     ReadWrite ReadWriteLogic(
@@ -37,7 +38,9 @@ module PIC_8259 (
         .IMR (IMR_Read),
         .IRR (IRR),
         .ICW (ICWs_flags),
-        .OCW (OCWs_flags)
+        .OCW (OCWs_flags),
+        .Interrupt_Vector(Control_data_out),
+        .IV_ready(IV_ready)
     );
 
     ControlLogic ControlLogic(
@@ -53,7 +56,8 @@ module PIC_8259 (
         .Read_command (Read_command),
         .AEOI (AEOI),
         .LTIM (LTIM),
-        .opperation_OCW2 (Priority_operation)
+        .opperation_OCW2 (Priority_operation),
+        .IV_ready(IV_ready)
     );
 
     priority_resolver PriorityResolver(
