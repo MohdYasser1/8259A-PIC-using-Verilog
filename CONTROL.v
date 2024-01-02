@@ -208,7 +208,7 @@ always @(cascade_mode,cascade_slave,int_from_slave,first_ACK,second_ACK,INT_VEC)
 end
 
 assign IV_ready = send_IV && second_ACK;  
-assign CAS = int_from_slave && (second_ACK)?CAS_OUT:3'bzzz;
+assign CAS = (int_from_slave && second_ACK)?CAS_OUT:3'bzzz;
 assign IV[7:0] = DATA_OUT[7:0];
 
 
