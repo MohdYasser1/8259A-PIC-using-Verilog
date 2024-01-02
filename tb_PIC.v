@@ -43,7 +43,10 @@ module tb_PIC ();
     
     reg [7:0] Data2;     //A register to drive the D pins
 
-    assign INT2 = IR[2];
+    // assign INT2 = IR[2];
+    always @(*) begin
+        IR[2] = INT2;
+    end
 
     PIC_8259 PIC2(
         .CS (CS2),
@@ -62,11 +65,13 @@ module tb_PIC ();
 
     
 
-    localparam test1 = 2'b00;
-    localparam test2 = 2'b01;
-    localparam test3 = 2'b10;
+    localparam test1 = 3'b000;
+    localparam test2 = 3'b001;
+    localparam test3 = 3'b010;
+    localparam test4 = 3'b011;
+    localparam test5 = 3'b100;
     
-    reg [1:0] test_mode = test3; 
+    reg [2:0] test_mode = test2; 
 
     /*
     test1:
@@ -87,7 +92,16 @@ module tb_PIC ();
     test3:
     Features Tested: Cascade Mode, Fully Nested, AEOI
     1. Raise IR1 on PIC2
-    2. Raise IR4 on PIC1
+    */
+
+    /*
+    test4 & test5:
+    Features Tested: Edge/Level Triggering Triggering, AEOI
+    1. test 4 will show where the edge triggering will fail to catch an interrupt
+        Assume IR4 raises an inturrupt and before the AEOI signal comes it required to interrupt again so it will not lower the ir4 and ir5 also needs the interrupt to
+            In Edge Triggering ir4 will not be serviced again and be ignored.
+
+    2. test 5 will show that the level triggering can succecced in the failed case of edge triggering
     */
 
     initial begin
@@ -206,6 +220,13 @@ module tb_PIC ();
                 #450
                 IR = 8'b00000000;
                 #50
+                // Apply Automatic Rotation
+                A0 = 1'b0;
+                Data = 8'b10000000;
+                #50
+                WR = 1'b0;
+                #50
+                WR = 1'b1;
                 //IR4 and IR5 and IR6  
                 IR = 8'b01110000;
                 #50
@@ -284,7 +305,7 @@ module tb_PIC ();
                 #50
                 //ICW3
                 WR2 = 1'b1;
-                Data2 = 8'b00000000; //IR2 has the slave's INT
+                Data2 = 8'b00000010; 
                 A02 = 1'b1;
                 #50
                 WR2 = 1'b0;
@@ -302,6 +323,108 @@ module tb_PIC ();
                 //Raise IR1 in PIC2
                 IR2 = 8'b00000010;
 
+            end
+
+            test4:
+            begin
+                //Initializing the PIC
+                //ICW1
+                CS = 1'b0;
+                WR = 1'b1;
+                RD = 1'b1;
+                Data = 8'bxxx10x11;
+                SPEN = 1'b1;
+                IR = 8'b00000000;
+                INTA = 1'b1;
+                A0 = 1'b0;
+                #50
+                WR = 1'b0;
+                #50
+                //ICW2
+                WR = 1'b1;
+                Data = 8'b10101xxx; // Assume the Interrupt Vector addresses are 10101xxx;
+                A0 = 1'b1;
+                #50
+                WR = 1'b0;
+                #50
+                //ICW4
+                WR = 1'b1;
+                Data = 8'b00000011;
+                #50
+                WR = 1'b0;
+                #50
+                WR = 1'b1;
+                //Initialization Complete
+
+                //Raise ir4
+                IR = 8'b00010000;
+                #400
+                //Raise ir4 and ir5
+                IR = 8'b00110000;
+                //Satus Read ISR
+                A0 = 1'b0;
+                Data = 8'b00001011;
+                WR = 1'b0;
+                #50
+                WR = 1'b1;
+                #50
+                RD = 1'b0;
+                #50
+                $display("Status Read: ISR = %b", D);
+                RD = 1'b1;
+                #100
+                IR = 8'b00010000;
+            end
+
+            test5:
+            begin
+                //Initializing the PIC
+                //ICW1
+                CS = 1'b0;
+                WR = 1'b1;
+                RD = 1'b1;
+                Data = 8'bxxx11x11; //Level Trigger
+                SPEN = 1'b1;
+                IR = 8'b00000000;
+                INTA = 1'b1;
+                A0 = 1'b0;
+                #50
+                WR = 1'b0;
+                #50
+                //ICW2
+                WR = 1'b1;
+                Data = 8'b10101xxx; // Assume the Interrupt Vector addresses are 10101xxx;
+                A0 = 1'b1;
+                #50
+                WR = 1'b0;
+                #50
+                //ICW4
+                WR = 1'b1;
+                Data = 8'b00000011;
+                #50
+                WR = 1'b0;
+                #50
+                WR = 1'b1;
+                //Initialization Complete
+
+                //Raise ir4
+                IR = 8'b00010000;
+                #400
+                //Raise ir4 and ir5
+                IR = 8'b00110000;
+                //Satus Read ISR
+                A0 = 1'b0;
+                Data = 8'b00001011;
+                WR = 1'b0;
+                #50
+                WR = 1'b1;
+                #50
+                RD = 1'b0;
+                #50
+                $display("Status Read: ISR = %b", D);
+                RD = 1'b1;
+                #100
+                IR = 8'b00000000;
             end
         endcase
     
