@@ -35,7 +35,7 @@ wire int_from_slave ;
 //////////////////////////////////////
 
 //////////////////wires declaration////////////////////////////////
-wire  ICW4 ,SNGL,SFNM ,BUF, M_S ,POLL, cascade_slave,cascade_mode;
+wire  ICW4 ,SNGL,SFNM ,BUF, M_S ,POLL, cascade_slave ,cascade_mode;
 wire  ICW1_RECEIVED, ICW2_RECEIVED, ICW3_RECEIVED, ICW4_RECEIVED,OCW1_RECEIVED,OCW2_RECEIVED,OCW3_RECEIVED;
 wire [4:0] T7_T3;
 wire [1:0]Special_Mask_Mode;
@@ -45,7 +45,7 @@ reg [7:0] IMR;
 
 reg [2:0] CAS_IN;
 reg [2:0] CAS_OUT;
-assign CAS = CAS_OUT;
+
 
   ///////////////
   localparam CMD_READY = 2'b00;
@@ -172,12 +172,12 @@ end
   end
 
 reg send_IV;
-assign cascade_salve = SNGL?0:(SP?0:1); // if no cascade then 0 if cascade_mode 0 for master and 1 for slave
+assign cascade_slave = SNGL?0:(SP?0:1); // if no cascade then 0 if cascade_mode 0 for master and 1 for slave
 assign cascade_mode = SNGL?0:1;          //1 if cascade mode is on
 
-assign int_from_slave = !SNGL ? (IRR_masked & icw3) != 8'b00000000 : 0; 
+assign int_from_slave = cascade_mode && !cascade_slave ? (IRR_masked & icw3) != 8'b00000000 : 0; 
 
-always @(CAS,cascade_mode,cascade_salve) begin
+always @(CAS,cascade_mode,cascade_slave) begin
   if(cascade_slave && cascade_mode)begin
     CAS_IN<=CAS;
   end 
@@ -185,7 +185,7 @@ end
 
 always @(cascade_mode,cascade_slave,int_from_slave,first_ACK,second_ACK,INT_VEC) begin
  if(cascade_mode) begin            // if cascade mode is on
-   if (!cascade_salve) begin      // if master
+   if (!cascade_slave) begin      // if master
     if(int_from_slave && (second_ACK)) begin // if slave active and during INTA 2 pulses cas_out = interupt vector
       CAS_OUT <= INT_VEC;
       send_IV <=0;
@@ -194,7 +194,7 @@ always @(cascade_mode,cascade_slave,int_from_slave,first_ACK,second_ACK,INT_VEC)
        send_IV <=1;
     end
    end else begin                      // if slave
-      if (second_ACK && (icw3[2:0]==CAS_IN[2:0])) begin // if cas lines equal slave address and second ack recieved 
+      if (second_ACK && (icw3[2:0] && CAS_IN[2:0])) begin // if cas lines equal slave address and second ack recieved 
       DATA_OUT <= {T7_T3, INT_VEC};   
       send_IV<=1;           
      end
@@ -208,7 +208,7 @@ always @(cascade_mode,cascade_slave,int_from_slave,first_ACK,second_ACK,INT_VEC)
 end
 
 assign IV_ready = send_IV && second_ACK;  
-assign CAS = CAS_OUT;
+assign CAS = int_from_slave && (second_ACK)?CAS_OUT:3'bzzz;
 assign IV[7:0] = DATA_OUT[7:0];
 
 
