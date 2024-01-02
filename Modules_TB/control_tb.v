@@ -15,8 +15,11 @@ module ControlLogic_tb;
   wire first_ACK;
   wire second_ACK;
   wire IV_ready;
-  wire IV;
+  wire [7:0]IV;
   wire [7:0] opperation_OCW2;
+
+  reg [2:0 ]CAS_in;
+  //assign CAS = CAS_in;
 
 
   // Instantiate the module
@@ -51,6 +54,7 @@ module ControlLogic_tb;
     OCWs_Flags = 3'b000;
     DATA_IN = 8'b00000000;
     IR = 8'b00010001;
+   // CAS_in = 3'b111;
 
     #10
 
