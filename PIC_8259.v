@@ -62,7 +62,7 @@ module PIC_8259 (
     );
 
     priority_resolver PriorityResolver(
-        // .LTIM (LTIM),
+        .LTIM (LTIM),
         .IR (IR),
         .IM (IMR),
         .operation (Priority_operation),

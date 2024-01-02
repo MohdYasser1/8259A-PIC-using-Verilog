@@ -184,7 +184,7 @@ always @(CAS,cascade_mode,cascade_slave) begin
   end 
 end
 
-always @(cascade_mode,cascade_slave,int_from_slave,first_ACK,second_ACK,INT_VEC) begin
+always @(*) begin
  if(cascade_mode) begin            // if cascade mode is on
    if (!cascade_slave) begin      // if master
     if(int_from_slave && (second_ACK)) begin // if slave active and during INTA 2 pulses cas_out = interupt vector
@@ -195,7 +195,7 @@ always @(cascade_mode,cascade_slave,int_from_slave,first_ACK,second_ACK,INT_VEC)
        send_IV <=1;
     end
    end else begin                      // if slave
-      if (second_ACK && (icw3[2:0] && CAS_IN[2:0])) begin // if cas lines equal slave address and second ack recieved 
+      if (second_ACK && (icw3[2:0] == CAS_IN[2:0])) begin // if cas lines equal slave address and second ack recieved 
       DATA_OUT <= {T7_T3, INT_VEC};   
       send_IV<=1;           
      end
