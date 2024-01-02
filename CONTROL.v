@@ -107,7 +107,7 @@ assign IV = DATA_OUT;
 end
 
   // handling ICWs
-  always @(ICW1_RECEIVED, ICW2_RECEIVED,SNGL, command_state, DATA_IN) begin
+  always @(ICW1_RECEIVED, ICW2_RECEIVED,ICW3_RECEIVED,ICW4_RECEIVED,SNGL,ICW4, command_state, DATA_IN) begin
     case (command_state)
       CMD_READY:
         if (ICW1_RECEIVED)begin
