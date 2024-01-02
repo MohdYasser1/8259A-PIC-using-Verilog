@@ -52,6 +52,7 @@ module PIC_8259 (
         .DATA_IN (D), 
         .IV (Control_data_out),
         .CAS (CAS),
+        .IR (IR),
         .IM (IMR),
         .Read_command (Read_command),
         .AEOI (AEOI),

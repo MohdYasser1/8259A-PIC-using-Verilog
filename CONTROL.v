@@ -172,7 +172,7 @@ end
   end
 
 reg send_IV;
-assign cascade_salve = SNGL?0:(SP?0:0); // if no cascade then 0 if cascade_mode 0 for master and 1 for slave
+assign cascade_salve = SNGL?0:(SP?0:1); // if no cascade then 0 if cascade_mode 0 for master and 1 for slave
 assign cascade_mode = SNGL?0:1;          //1 if cascade mode is on
 
 assign int_from_slave = !SNGL ? (IRR_masked & icw3) != 8'b00000000 : 0; 
