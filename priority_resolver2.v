@@ -123,37 +123,46 @@ module priority_resolver(
         pulses_counter = pulses_counter + 1;
 
         if (pulses_counter == 1) begin
-            // choose the highest priority based on the priority mode
-            if (current_mode == AUTOMATIC_ROTATING || current_mode == SPECIFIC_ROTATING) begin 
-                // set the counter to the highest priority interrupt
-                priority_counter = highest_level;
-                for(n = 0; n < 8; n = n + 1) begin
-                  if(IRR[priority_counter] == 1)
-                      ISR[priority_counter] = 1;
-                      IRR[priority_counter] = 0;
-                      edg_IRR[priority_counter] = 0;
-                      lvl_IRR[priority_counter] = 0;
-                      last_acknowledged_interrupt = priority_counter;
-                      n = 8;
-                  else
-                    priority_counter = (priority_counter + 1) % 8; 
-                end
-                
+            if(IRR == 0) begin
+                ISR[7] = 1;
+                last_acknowledged_interrupt = 7;
             end
-            else begin // fixed priority mode
-                for (i = 0; i < 8; i = i + 1) begin
-                    if (IRR[i] == 1 && IMR[i] != 1) begin
-                        ISR[i] = 1;
-                        IRR[i] = 0;
-                        edg_IRR[i] = 0;
-                        lvl_IRR[i] = 0;
-                        last_acknowledged_interrupt = i;
-                        i = 8;
+            else begin
+                // choose the highest priority based on the priority mode
+                if (current_mode == AUTOMATIC_ROTATING || current_mode == SPECIFIC_ROTATING) begin 
+                    // set the counter to the highest priority interrupt
+                    if(current_mode == SPECIFIC_ROTATING)
+                      priority_counter = highest_level;
+                    else
+                      priority_counter = (last_acknowledged_interrupt + 1) % 8;
+
+                    for(n = 0; n < 8; n = n + 1) begin
+                      if(IRR[priority_counter] == 1) begin
+                          ISR[priority_counter] = 1;
+                          IRR[priority_counter] = 0;
+                          edg_IRR[priority_counter] = 0;
+                          lvl_IRR[priority_counter] = 0;
+                          last_acknowledged_interrupt = priority_counter;
+                          n = 8;
+                      end
+                      else
+                          priority_counter = (priority_counter + 1) % 8; 
+                    end     
+                end
+                else begin // fixed priority mode
+                    for (i = 0; i < 8; i = i + 1) begin
+                        if (IRR[i] == 1 && IMR[i] != 1) begin
+                            ISR[i] = 1;
+                            IRR[i] = 0;
+                            edg_IRR[i] = 0;
+                            lvl_IRR[i] = 0;
+                            last_acknowledged_interrupt = i;
+                            i = 8;
+                        end
                     end
                 end
             end
         end 
-        
         else if (pulses_counter == 2) begin
             // set the Interrupt Vector
             INT_VEC <= last_acknowledged_interrupt;
